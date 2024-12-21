@@ -6,20 +6,33 @@ using UnityEngine.Video;
 public class VideoManager : MonoBehaviour
 {
     [SerializeField]
-    Stack<DialogueSo> dialogueSos = new Stack<DialogueSo>();
+    List<DialogueSo> dialogueSos = new List<DialogueSo>();
 
     [SerializeField] VideoPlayer videoPlayer;
 
     bool isVideoPlaying;
+    bool isCutScenePlaying;
 
     [SerializeField] TextMeshProUGUI _firstDialogueText;
     [SerializeField] TextMeshProUGUI _secondDialogueText;
 
     DialogueSo _currentDialogue;
+
+    int _balanceMeter;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         StartNextDialogue();
+    }
+
+    void OnEnable()
+    {
+        ButtonEventTrigger.OnButtonClicked += OnDialogueSelected;
+    }
+
+    void OnDisable()
+    {
+        ButtonEventTrigger.OnButtonClicked -= OnDialogueSelected;
     }
 
     // Update is called once per frame
@@ -29,11 +42,17 @@ public class VideoManager : MonoBehaviour
         {
             ShowDialogueSelection();
         }
+
+        if (isCutScenePlaying && !videoPlayer.isPlaying)
+        {
+            StartNextDialogue();
+        }
     }
 
     void StartNextDialogue()
     {
-        _currentDialogue = dialogueSos.Pop();
+        _currentDialogue = dialogueSos[0];
+        dialogueSos.Remove(_currentDialogue);
 
         videoPlayer.clip = _currentDialogue.DialogueVideo;
         videoPlayer.Play();
@@ -42,6 +61,8 @@ public class VideoManager : MonoBehaviour
 
     void ShowDialogueSelection()
     {
+        isVideoPlaying = false;
+
         _firstDialogueText.text = _currentDialogue.FirstOption.DialogueText;
         _secondDialogueText.text = _currentDialogue.SecondOption.DialogueText;
 
@@ -51,6 +72,24 @@ public class VideoManager : MonoBehaviour
 
     void OnDialogueSelected(int index)
     {
+        _firstDialogueText.transform.parent.gameObject.SetActive(false);
+        _secondDialogueText.transform.parent.gameObject.SetActive(false);
 
+        if (index == 1)
+        {
+            _balanceMeter += _currentDialogue.FirstOption.BalanceChange;
+            PlayCutScene(_currentDialogue.FirstOption.NextCutscene);
+        }
+        else
+        {
+            _balanceMeter += _currentDialogue.SecondOption.BalanceChange;
+            PlayCutScene(_currentDialogue.SecondOption.NextCutscene);
+        }
+    }
+
+    void PlayCutScene(VideoClip videoClip)
+    {
+        isCutScenePlaying = true;
+        videoPlayer.clip = videoClip;
     }
 }
